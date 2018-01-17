@@ -1,7 +1,37 @@
-<canvas id="canv" width="1000" height="800" style="margin:20px;border:1px solid black;"/>
+<canvas id="canv" width="1000" height="800" style="margin:20px;border:1px solid black;" onclick="canvClick()"/>
 <script>
-function Drawing(canvas, gridMult){
-	this.elem=canvas;
+const mult=5;
+
+function Model(width, height){
+	this.elements=[];
+	this.width=width;
+	this.height=height;
+	for(var i=0;i<=width;i++){
+		var newCol=[]
+		for(var j=0;j<=height;j++)
+			newCol.push(new Component("none"));
+		this.elements.push(newCol);
+	}
+
+	for(var i=0;i<=width;i++){
+		this.elements[i][0].directions[0]=false;
+		this.elements[i][height].directions[2]=false;
+	}
+	for(var i=0;i<=height;i++){
+		this.elements[0][i].directions[3]=false;
+		this.elements[width][i].directions[1]=false;
+	}
+}
+function Component(type){
+	this.type=type;
+	this.directions=[true,true,true,true]; //N,E,S,W
+}
+function Wire(){
+	this.points=[];
+}
+
+function View(canvas, gridMult){
+	//this.elem=canvas;
 	this.left=canvas.offsetLeft;
 	this.top=canvas.offsetTop;
 	this.ctx=canvas.getContext('2d');
@@ -12,7 +42,14 @@ function Drawing(canvas, gridMult){
 	this.line=function(x1,y1,x2,y2){		
 		this.ctx.moveTo(x1*gridMult,y1*gridMult);
 		this.ctx.lineTo(x2*gridMult,y2*gridMult);
-	}	
+	}
+	this.wire=function(w){
+		var start=w[0];
+		this.ctx.moveTo(start[0]*gridMult,start[1]*gridMult)
+		for(var i=1;i<w.length;i++){
+			this.ctx.lineTo(w[i][0]*gridMult,w[i][1]*gridMult);
+		}
+	}
 	this.grid=function(){		
 		for(var i=1;i<this.height/gridMult;i++)
 			this.line(0,i,this.width,i);
@@ -25,7 +62,13 @@ function Drawing(canvas, gridMult){
 	}
 }
 
-var canv=new Drawing(document.getElementById('canv'),10);
+function canvClick(event){
+	var x=Math.round((event.pageX-canv.left)/mult);
+	var y=Math.round((event.pageY-canv.top)/mult);
+}
+
+var mod=new Model(1000/mult, 800/mult); //make sure this is an integer
+var canv=new View(document.getElementById('canv'),mult);
 canv.grid();
 canv.ctx.strokeStyle="#000";
 canv.line(10,10,30,30);
