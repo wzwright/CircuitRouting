@@ -1,6 +1,6 @@
-<canvas id="canv" width="1000" height="800" style="margin:20px;border:1px solid black;" onclick="canvClick()"/>
+<canvas id="canv" width="1200" height="840" style="margin:20px;border:1px solid black;" onclick="canvClick()"/>
 <script>
-const mult=5;
+const mult=10;
 
 function Model(width, height){
 	this.elements=[];
@@ -9,7 +9,7 @@ function Model(width, height){
 	for(var i=0;i<=width;i++){
 		var newCol=[]
 		for(var j=0;j<=height;j++)
-			newCol.push(new Component("none"));
+			newCol.push(new Component());
 		this.elements.push(newCol);
 	}
 
@@ -21,9 +21,16 @@ function Model(width, height){
 		this.elements[0][i].directions[3]=false;
 		this.elements[width][i].directions[1]=false;
 	}
+
+	this.open=function(x,y,dir){
+		if(dir===undefined){
+			return this.elements[x][y].type===null;
+		}
+		//dir not undefined for crossing wires, implement later
+	}
 }
 function Component(type){
-	this.type=type;
+	this.type=type||null;
 	this.directions=[true,true,true,true]; //N,E,S,W
 }
 function Wire(){
@@ -55,7 +62,7 @@ function View(canvas, gridMult){
 			this.line(0,i,this.width,i);
 		for(var i=1;i<this.width/gridMult;i++)
 			this.line(i,0,i,this.height);
-		this.ctx.strokeStyle="#AAA";
+		this.ctx.strokeStyle="#CCC";
 		this.ctx.stroke();
 		this.ctx.beginPath();
 		this.ctx.strokeStyle="#000";
@@ -67,10 +74,9 @@ function canvClick(event){
 	var y=Math.round((event.pageY-canv.top)/mult);
 }
 
-var mod=new Model(1000/mult, 800/mult); //make sure this is an integer
+var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
 var canv=new View(document.getElementById('canv'),mult);
 canv.grid();
-canv.ctx.strokeStyle="#000";
 canv.line(10,10,30,30);
 canv.line(50,10,80,20);
 canv.render();
