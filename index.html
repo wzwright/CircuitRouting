@@ -3,31 +3,37 @@
 <script>
 const mult=10;
 
-function Model(width, height){
-	this.elements=[];
-	this.width=width;
-	this.height=height;
-	for(var i=0;i<=width;i++){
-		var newCol=[]
-		for(var j=0;j<=height;j++)
-			newCol.push(new Component());
-		this.elements.push(newCol);
+class Model{
+	constructor(width,height){
+		this.elements=[];
+		this.width=width;
+		this.height=height;
+		
+		for(var i=0;i<=width;i++){
+			var newCol=[]
+			for(var j=0;j<=height;j++)
+				newCol.push(new Component(Types.empty));
+			this.elements.push(newCol);
+		}
+
+		for(var i=0;i<=width;i++){
+			this.elements[i][0].directions[0]=false;
+			this.elements[i][height].directions[2]=false;
+		}
+		for(var i=0;i<=height;i++){
+			this.elements[0][i].directions[3]=false;
+			this.elements[width][i].directions[1]=false;
+		}
 	}
 
-	for(var i=0;i<=width;i++){
-		this.elements[i][0].directions[0]=false;
-		this.elements[i][height].directions[2]=false;
-	}
-	for(var i=0;i<=height;i++){
-		this.elements[0][i].directions[3]=false;
-		this.elements[width][i].directions[1]=false;
-	}
-
-	this.open=function(x,y,dir){
+	open(x,y,dir){
 		if(dir===undefined){
 			return this.elements[x][y].type===null;
 		}
 		//dir not undefined for crossing wires, implement later
+	}
+	wirable(x,y){
+		return this.elements[x][y].type===Types.edge;
 	}
 }
 function Component(type){
@@ -38,41 +44,45 @@ function Wire(){
 	this.points=[];
 }
 
-function View(canvas, gridMult){
-	//this.elem=canvas;
-	this.left=canvas.offsetLeft;
-	this.top=canvas.offsetTop;
-	this.ctx=canvas.getContext('2d');
-	this.width=canvas.width;
-	this.height=canvas.height;
-	this.mode=Modes.normal;
+class View{
+	constructor(canvas,gridMult){
+		//this.elem=canvas;
+		this.gm=gridMult;
+		this.left=canvas.offsetLeft;
+		this.top=canvas.offsetTop;
+		this.ctx=canvas.getContext('2d');
+		this.width=canvas.width;
+		this.height=canvas.height;
+		this.mode=Modes.normal;
+		this.wireStart=null;
+	}
 
-	this.line=function(x1,y1,x2,y2){		
+	line(x1,y1,x2,y2){		
 		this.ctx.beginPath();
-		this.ctx.moveTo(x1*gridMult,y1*gridMult);
-		this.ctx.lineTo(x2*gridMult,y2*gridMult);
+		this.ctx.moveTo(x1*this.gm,y1*this.gm);
+		this.ctx.lineTo(x2*this.gm,y2*this.gm);
 		this.ctx.stroke();
 	}
-	this.wire=function(w){ //list of points on wire
+	wire(w){ //list of points on wire
 		this.ctx.beginPath();
 		var start=w[0];
-		this.ctx.moveTo(start[0]*gridMult,start[1]*gridMult)
+		this.ctx.moveTo(start[0]*this.gm,start[1]*this.gm)
 		for(var i=1;i<w.length;i++){
-			this.ctx.lineTo(w[i][0]*gridMult,w[i][1]*gridMult);
+			this.ctx.lineTo(w[i][0]*this.gm,w[i][1]*this.gm);
 		}
 		this.ctx.stroke();
 	}
-	this.point=function(x,y){
+	point(x,y){
 		this.ctx.beginPath();
-		this.ctx.arc(x*gridMult,y*gridMult,gridMult/4,0,2*Math.PI);
+		this.ctx.arc(x*this.gm,y*this.gm,this.gm/4,0,2*Math.PI);
 		this.ctx.fill();
 	}
-	this.grid=function(){
+	grid(){
 		this.ctx.beginPath();
 		this.ctx.strokeStyle="#BBB";
-		for(var i=1;i<this.height/gridMult;i++)
+		for(var i=1;i<this.height/this.gm;i++)
 			this.line(0,i,this.width,i);
-		for(var i=1;i<this.width/gridMult;i++)
+		for(var i=1;i<this.width/this.gm;i++)
 			this.line(i,0,i,this.height);		
 		this.ctx.stroke();		
 		this.ctx.strokeStyle="#000";
@@ -84,8 +94,13 @@ function canvClick(event){
 	var y=Math.round((event.pageY-canv.top)/mult);
 	switch(canv.mode){
 		case Modes.normal:
-			console.log(x);
-			console.log(y);
+			if (mod.wirable(x,y)){
+				canv.wireStart=[x,y]
+				canv.mode=Modes.wiring;
+				canv.ctx.fillStyle="#A00";
+				canv.point(x,y);
+			}
+			
 			break;
 		case Modes.wiring:
 			break;
@@ -99,6 +114,4 @@ canv.grid();
 canv.line(10,10,30,30);
 canv.line(50,10,80,20);
 
-canv.ctx.fillStyle="#A00";
-canv.point(5,8);
 </script>
