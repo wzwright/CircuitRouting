@@ -1,11 +1,15 @@
 class Modes{
 	static get normal(){return "normal";}
 	static get wiring(){return "wiring";}
+	static get component(){return "component";}
 }
 class Types{
 	static get body(){return "body";}
 	static get edge(){return "edge";}
-	static get wire(){return "wire";}
+	static get horiz(){return "horiz";}
+	static get vert(){return "vert";}
+	static get corner(){return "corner";}
+	static get cross(){return "cross";}
 	static get wiredEdge(){return "wiredEdge";}
 }
 

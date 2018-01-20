@@ -1,28 +1,26 @@
-<canvas id="canv" width="1200" height="840" style="margin:20px;border:1px solid black;"/>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+<button id="placeComp" class="btn btn-default" onclick="compMode()">Place Component</button>
+<canvas id="canv" width="1200" height="840" style="margin:20px;border:1px solid black;"></canvas>
+
 <script src="./utils.js"></script>
 <script>
-const mult=10;
+const mult=10;//grid pixel multiplier
+const compSz=4;//component size
 
 class Model{
 	constructor(width,height){
-		this.elements=[];
+		this.elements=[];//2d array of what is contained in each point
+		this.wires=[];//list of wires represented as list of points
+		this.components=[];//list of components, each component marked by top left point
 		this.width=width;
 		this.height=height;
 		
 		for(var i=0;i<=width;i++){
 			var newCol=[]
 			for(var j=0;j<=height;j++)
-				newCol.push(new Component(Types.empty));
+				newCol.push(new GridItem());
 			this.elements.push(newCol);
-		}
-
-		for(var i=0;i<=width;i++){
-			this.elements[i][0].directions[0]=false;
-			this.elements[i][height].directions[2]=false;
-		}
-		for(var i=0;i<=height;i++){
-			this.elements[0][i].directions[3]=false;
-			this.elements[width][i].directions[1]=false;
 		}
 	}
 
@@ -35,10 +33,38 @@ class Model{
 	wirable(x,y){
 		return this.elements[x][y].type===Types.edge;
 	}
+	wire(w){
+		//change model to hold wires, probably remove directions and add more types
+	}
+	component(x,y){
+		//check if component isn't overlapping with anything
+		if(x+compSz>this.width||y+compSz>this.height)
+			return false;
+		for(var i=0;i<=compSz;i++){
+			for(var j=0;j<=compSz;j++){
+				if(this.elements[x+i][y+j].type!==null)
+					return false;
+			}
+		}
+
+		//place component
+		this.components.push([x,y])
+		for(var i=0;i<=compSz;i++){
+			for(var j=0;j<=compSz;j++){
+				if(i==0||j==0||i==compSz||j==compSz)
+					this.elements[x+i][y+j]=new GridItem("edge");
+				else
+					this.elements[x+i][y+j]=new GridItem("body");
+			}
+		}
+		return true;
+	}
+	route(x1,y1,x2,y2){ //astar route
+		return [];
+	}
 }
-function Component(type){
+function GridItem(type){
 	this.type=type||null;
-	this.directions=[true,true,true,true]; //N,E,S,W
 }
 function Wire(){
 	this.points=[];
@@ -55,6 +81,19 @@ class View{
 		this.height=canvas.height;
 		this.mode=Modes.normal;
 		this.wireStart=null;
+	}
+
+	redraw(){
+		this.ctx.clearRect(0,0,this.width,this.height);
+		this.grid();
+		mod.components.forEach(function(corner){
+			var x=corner[0];
+			var y=corner[1];
+			this.component(x,y);
+		},this);
+		mod.wires.forEach(function(w){
+			this.wire(w);
+		},this);
 	}
 
 	line(x1,y1,x2,y2){		
@@ -77,9 +116,12 @@ class View{
 		this.ctx.arc(x*this.gm,y*this.gm,this.gm/4,0,2*Math.PI);
 		this.ctx.fill();
 	}
+	component(x,y){
+		this.wire([[x,y],[x+compSz,y],[x+compSz,y+compSz],[x,y+compSz],[x,y]]);
+	}
 	grid(){
 		this.ctx.beginPath();
-		this.ctx.strokeStyle="#BBB";
+		this.ctx.strokeStyle="#DDD";
 		for(var i=1;i<this.height/this.gm;i++)
 			this.line(0,i,this.width,i);
 		for(var i=1;i<this.width/this.gm;i++)
@@ -94,24 +136,39 @@ function canvClick(event){
 	var y=Math.round((event.pageY-canv.top)/mult);
 	switch(canv.mode){
 		case Modes.normal:
-			if (mod.wirable(x,y)){
+			if(mod.wirable(x,y)){
 				canv.wireStart=[x,y]
 				canv.mode=Modes.wiring;
 				canv.ctx.fillStyle="#A00";
 				canv.point(x,y);
-			}
-			
+			}			
 			break;
 		case Modes.wiring:
+			if((canv.wireStart[0]!=x||canv.wireStart[1]!=y)&&mod.wirable(x,y)){ 
+				var w=mod.route(canv.wireStart[0],canv.wireStart[1]);
+				mod.wire(w);
+				canv.wire(w);
+			}
+			break;
+		case Modes.component:
+			if(mod.component(x,y)){
+				canv.component(x,y);
+				canv.mode=Modes.normal;
+				document.getElementById("placeComp").className="btn btn-default";
+			}
 			break;
 	}
+}
+
+function compMode(){
+	canv.mode=Modes.component;
+	document.getElementById("placeComp").className="btn btn-success";
 }
 
 var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
 var canv=new View(document.getElementById('canv'),mult);
 document.getElementById('canv').onclick=canvClick;
 canv.grid();
-canv.line(10,10,30,30);
-canv.line(50,10,80,20);
 
 </script>
+<button onclick="canv.redraw();">dank</button>
