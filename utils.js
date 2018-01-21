@@ -13,6 +13,23 @@ class Types{
 	static get wiredEdge(){return "wiredEdge";}
 }
 
+class Node{ //search node
+	constructor(parent, moveCost, state, f) {
+		this.parent = parent;
+		this.state = state;
+		this.f=f
+
+		if(parent==null)
+			this.cost=0;
+		else
+			this.cost=parent.cost+moveCost;
+	}
+	static compare(a,b){
+		return a.f-b.f;
+	}
+}
+
+
 //bin heap priority queue borrowed from tinyqueue project by mourner on github
 function TinyQueue(data, compare) { 
     if (!(this instanceof TinyQueue)) return new TinyQueue(data, compare);

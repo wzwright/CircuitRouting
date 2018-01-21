@@ -59,8 +59,18 @@ class Model{
 		}
 		return true;
 	}
-	route(x1,y1,x2,y2){ //astar route
-		return [];
+	route(xStart,yStart,xGoal,yGoal){ //A* route
+		function h(x,y){ //Manhattan distance heuristic
+			return Math.abs(x-xGoal)+Math.abs(y-yGoal);
+		}
+		
+		var predecessors=Array();
+		var start=new Node(null, 0, [xStart,yStart], h(xStart,yStart));
+		var q=new TinyQueue([start],Node.compare);
+		
+		while(q.length!=0){
+			//write this stuff
+		}
 	}
 }
 function GridItem(type){
