@@ -25,10 +25,18 @@ class Model{
 	}
 
 	open(x,y,dir){
+		if(x<0||y<0||x>this.width||y>this.height)
+			return false;
+		var typ=this.elements[x][y].type;
 		if(dir===undefined){
-			return this.elements[x][y].type===null;
+			return typ===null;
 		}
-		//dir not undefined for crossing wires, implement later
+		else if(dir=='h'){
+			return typ===null||typ===Types.vert;
+		}
+		else{ //dir=='v'
+			return typ===null||typ===Types.horiz;
+		}		
 	}
 	wirable(x,y){
 		return this.elements[x][y].type===Types.edge;
@@ -59,17 +67,53 @@ class Model{
 		}
 		return true;
 	}
-	route(xStart,yStart,xGoal,yGoal){ //A* route
+	route(xStart,yStart,xGoal,yGoal){ //A* routing
+		var start=[xStart,yStart]
+		var goal=[xGoal,yGoal]
 		function h(x,y){ //Manhattan distance heuristic
 			return Math.abs(x-xGoal)+Math.abs(y-yGoal);
 		}
-		
+		function pointEq(a,b){
+			return a[0]==b[0]&&a[1]==b[1];
+		}
+		function openNeighbors(x,y,goal){
+			var res=[];
+			if(mod.open(x+1,y,'h')||pointEq([x+1,y],goal)){res.push([x+1,y]);}
+			if(mod.open(x-1,y,'h')||pointEq([x-1,y],goal)){res.push([x-1,y]);}
+			if(mod.open(x,y+1,'v')||pointEq([x,y+1],goal)){res.push([x,y+1]);}
+			if(mod.open(x,y-1,'v')||pointEq([x,y-1],goal)){res.push([x,y-1]);}			
+			return res;
+		}
+
 		var predecessors=Array();
-		var start=new Node(null, 0, [xStart,yStart], h(xStart,yStart));
-		var q=new TinyQueue([start],Node.compare);
+		var startNode=new Node(null, start, h(xStart,yStart));
+		var q=new TinyQueue([startNode],Node.compare);
 		
 		while(q.length!=0){
-			//write this stuff
+			var cur=q.pop();
+			if(pointEq(cur.state,goal))
+				return getPath(cur);
+
+			openNeighbors(cur.state[0],cur.state[1],goal).forEach(function(neighbor){
+				var nX=neighbor[0];
+				var nY=neighbor[1];
+				if((nX in predecessors)&&(nY in predecessors[nX]))
+					return;
+				if(!(nX in predecessors))
+					predecessors[nX]=new Array();
+				predecessors[nX][nY]=[cur.state[0],cur.state[1]];
+				q.push(new Node(cur, neighbor, h(nX,nY)));
+			});
+		}
+
+		function getPath(endNode){
+			var res=[];
+			var cur=endNode;
+			while(cur){
+				res.push(cur.state);
+				cur=cur.parent;
+			}
+			return res;
 		}
 	}
 }
@@ -155,7 +199,7 @@ function canvClick(event){
 			break;
 		case Modes.wiring:
 			if((canv.wireStart[0]!=x||canv.wireStart[1]!=y)&&mod.wirable(x,y)){ 
-				var w=mod.route(canv.wireStart[0],canv.wireStart[1]);
+				var w=mod.route(x,y,canv.wireStart[0],canv.wireStart[1]);
 				mod.wire(w);
 				canv.wire(w);
 			}

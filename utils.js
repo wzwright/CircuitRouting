@@ -14,7 +14,7 @@ class Types{
 }
 
 class Node{ //search node
-	constructor(parent, moveCost, state, f) {
+	constructor(parent, state, f) {
 		this.parent = parent;
 		this.state = state;
 		this.f=f
@@ -22,10 +22,10 @@ class Node{ //search node
 		if(parent==null)
 			this.cost=0;
 		else
-			this.cost=parent.cost+moveCost;
+			this.cost=parent.cost+1; //all wires have the same cost here
 	}
 	static compare(a,b){
-		return a.f-b.f;
+		return a.cost+a.f-b.cost-b.f;
 	}
 }
 
