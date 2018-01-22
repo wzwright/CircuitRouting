@@ -40,10 +40,7 @@ class Model{
 	}
 	wirable(x,y){
 		return this.elements[x][y].type===Types.edge;
-	}
-	wire(w){
-		//change model to hold wires, probably remove directions and add more types
-	}
+	}	
 	component(x,y){
 		//check if component isn't overlapping with anything
 		if(x+compSz>this.width||y+compSz>this.height)
@@ -66,6 +63,25 @@ class Model{
 			}
 		}
 		return true;
+	}
+	wire(w){
+		var fst=w[0];
+		var lst=w[w.length-1];
+		this.elements[fst[0]][fst[1]].type=Types.wiredEdge;
+		this.elements[lst[0]][lst[1]].type=Types.wiredEdge;
+		for(var i=1;i<w.length-1;i++){
+			var xPrev=w[i-1][0], yPrev=w[i-1][1], xNext=w[i+1][0], yNext=w[i+1][1];			
+			var resType=null;
+			var prevEmpty=this.elements[w[i][0]][w[i][1]].type===null;
+			if(yPrev==yNext)
+				resType=prevEmpty?Types.horiz:Types.cross;
+			else if(xPrev==xNext)
+				resType=prevEmpty?Types.vert:Types.cross;
+			else
+				resType=Types.corner;
+			this.elements[w[i][0]][w[i][1]].type=resType;
+		}
+		this.wires.push(w);
 	}
 	route(xStart,yStart,xGoal,yGoal){ //A* routing
 		var start=[xStart,yStart]
@@ -171,7 +187,9 @@ class View{
 		this.ctx.fill();
 	}
 	component(x,y){
+		this.ctx.strokeStyle="#555";
 		this.wire([[x,y],[x+compSz,y],[x+compSz,y+compSz],[x,y+compSz],[x,y]]);
+		this.ctx.strokeStyle="#000";
 	}
 	grid(){
 		this.ctx.beginPath();
@@ -183,6 +201,22 @@ class View{
 		this.ctx.stroke();		
 		this.ctx.strokeStyle="#000";
 	}
+
+	chMode(m,opt){
+		this.mode=m;
+		this.redraw();
+		document.getElementById("placeComp").className="btn btn-default";
+		switch(m){
+			case Modes.wiring:
+				canv.ctx.fillStyle="#A00";
+				canv.point(opt[0],opt[1]);
+				break;
+			case Modes.component:
+				document.getElementById("placeComp").className="btn btn-success";
+				break;
+		}
+
+	}
 }
 
 function canvClick(event){
@@ -192,36 +226,41 @@ function canvClick(event){
 		case Modes.normal:
 			if(mod.wirable(x,y)){
 				canv.wireStart=[x,y]
-				canv.mode=Modes.wiring;
-				canv.ctx.fillStyle="#A00";
-				canv.point(x,y);
+				canv.chMode(Modes.wiring,[x,y]);
 			}			
 			break;
 		case Modes.wiring:
 			if((canv.wireStart[0]!=x||canv.wireStart[1]!=y)&&mod.wirable(x,y)){ 
 				var w=mod.route(x,y,canv.wireStart[0],canv.wireStart[1]);
+				if(w===undefined){alert("can't route");return;}					
 				mod.wire(w);
-				canv.wire(w);
+				canv.chMode(Modes.normal);
 			}
 			break;
 		case Modes.component:
-			if(mod.component(x,y)){
-				canv.component(x,y);
-				canv.mode=Modes.normal;
-				document.getElementById("placeComp").className="btn btn-default";
+			if(mod.component(x,y)){				
+				canv.chMode(Modes.normal);
 			}
 			break;
 	}
 }
 
 function compMode(){
-	canv.mode=Modes.component;
-	document.getElementById("placeComp").className="btn btn-success";
+	if(canv.mode==Modes.component)
+		canv.chMode(Modes.normal);
+	else
+		canv.chMode(Modes.component);
+}
+
+function handleKeys(e){
+	if(e.keyCode==27)
+		canv.chMode(Modes.normal);
 }
 
 var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
 var canv=new View(document.getElementById('canv'),mult);
 document.getElementById('canv').onclick=canvClick;
+document.onkeydown=handleKeys;
 canv.grid();
 
 </script>
