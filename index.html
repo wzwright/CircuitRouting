@@ -1,11 +1,17 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 
-<button id="placeComp" class="btn btn-default" onclick="compMode()">Place Component</button>
-<canvas id="canv" width="1200" height="840" style="margin:20px;border:1px solid black;"></canvas>
+<div class="container" style="margin:10px;">
+	<div class="row" style="margin:10px;">
+		<button id="placeComp" class="btn btn-default" onclick="compMode()">Place Component</button>
+	</div>
+	<div class="row">
+		<canvas id="canv" width="1200" height="840" style="border:1px solid black;"></canvas>
+	</div>
+</div>
 
 <script src="./utils.js"></script>
 <script>
-const mult=10;//grid pixel multiplier
+const mult=20;//grid pixel multiplier
 const compSz=4;//component size
 
 class Model{
@@ -67,8 +73,11 @@ class Model{
 	wire(w){
 		var fst=w[0];
 		var lst=w[w.length-1];
+		var id=this.wires.length;
 		this.elements[fst[0]][fst[1]].type=Types.wiredEdge;
+		this.elements[fst[0]][fst[1]].wireId=id;
 		this.elements[lst[0]][lst[1]].type=Types.wiredEdge;
+		this.elements[lst[0]][lst[1]].wireId=id;
 		for(var i=1;i<w.length-1;i++){
 			var xPrev=w[i-1][0], yPrev=w[i-1][1], xNext=w[i+1][0], yNext=w[i+1][1];			
 			var resType=null;
@@ -80,8 +89,31 @@ class Model{
 			else
 				resType=Types.corner;
 			this.elements[w[i][0]][w[i][1]].type=resType;
+			if(resType!==Types.cross)
+				this.elements[w[i][0]][w[i][1]].wireId=id;
+			else
+				this.elements[w[i][0]][w[i][1]].w2=id;
 		}
 		this.wires.push(w);
+	}
+	removeWire(index){
+		var w=this.wires[index];
+		this.elements[w[0][0]][w[0][1]].type=Types.edge;
+		this.elements[w[w.length-1][0]][w[w.length-1][1]].type=Types.edge;
+		for(var i=1;i<w.length-1;i++){
+			var cur=this.elements[w[i][0]][w[i][1]];
+			if(cur.type!==Types.cross)
+				cur.type=null;			
+			else{
+				if(w[i-1][0]==w[i+1][0])
+					cur.type=Types.horiz;
+				else
+					cur.type=Types.vert;
+				if(cur.wireId==index)
+					cur.wireId=cur.w2;
+			}
+		}
+		this.wires.splice(this.wires.indexOf(canv.selectedWire),1); //remove
 	}
 	route(xStart,yStart,xGoal,yGoal){ //A* routing
 		var start=[xStart,yStart]
@@ -211,9 +243,14 @@ class View{
 				canv.ctx.fillStyle="#A00";
 				canv.point(opt[0],opt[1]);
 				break;
+			case Modes.wire:
+				canv.ctx.strokeStyle="#0C0";
+				canv.wire(mod.wires[opt]);
+				canv.selectedWire=opt;
+				break;
 			case Modes.component:
 				document.getElementById("placeComp").className="btn btn-success";
-				break;
+				break;			
 		}
 
 	}
@@ -223,11 +260,20 @@ function canvClick(event){
 	var x=Math.round((event.pageX-canv.left)/mult);
 	var y=Math.round((event.pageY-canv.top)/mult);
 	switch(canv.mode){
+		case Modes.wire:
 		case Modes.normal:
 			if(mod.wirable(x,y)){
 				canv.wireStart=[x,y]
 				canv.chMode(Modes.wiring,[x,y]);
-			}			
+			}
+			else if(Types.isWire(mod.elements[x][y].type)||mod.elements[x][y].type===Types.wiredEdge){
+				var selected=null;
+				if((mod.elements[x][y].type===Types.cross)&&Math.random()<0.5)
+					selected=mod.elements[x][y].w2;				
+				else
+					selected=mod.elements[x][y].wireId;
+				canv.chMode(Modes.wire,selected);
+			}
 			break;
 		case Modes.wiring:
 			if((canv.wireStart[0]!=x||canv.wireStart[1]!=y)&&mod.wirable(x,y)){ 
@@ -253,8 +299,16 @@ function compMode(){
 }
 
 function handleKeys(e){
-	if(e.keyCode==27)
-		canv.chMode(Modes.normal);
+	switch(e.keyCode){
+		case 27: //esc
+			canv.chMode(Modes.normal);
+			break;
+		case 68: //d
+			if(canv.mode===Modes.wire){
+				mod.removeWire(canv.selectedWire);
+				canv.chMode(Modes.normal);
+			}
+	}
 }
 
 var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
@@ -264,4 +318,3 @@ document.onkeydown=handleKeys;
 canv.grid();
 
 </script>
-<button onclick="canv.redraw();">dank</button>

@@ -1,6 +1,7 @@
 class Modes{
 	static get normal(){return "normal";}
 	static get wiring(){return "wiring";}
+	static get wire(){return "wire";}
 	static get component(){return "component";}
 }
 class Types{
@@ -11,6 +12,10 @@ class Types{
 	static get corner(){return "corner";}
 	static get cross(){return "cross";}
 	static get wiredEdge(){return "wiredEdge";}
+
+	static isWire(t){
+		return t===this.horiz||t===this.vert||t===this.cross||t===this.corner;
+	}
 }
 
 class Node{ //search node
