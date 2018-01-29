@@ -1,8 +1,9 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 
 <div class="container" style="margin:10px;">
-	<div class="row" style="margin:10px;">
+	<div class="row" style="margin-top: 10px; margin-bottom: 10px;">
 		<button id="placeComp" class="btn btn-default" onclick="compMode()">Place Component</button>
+		<span style="margin-left: 50px;">note: press d while a wire is selected to delete</span>
 	</div>
 	<div class="row">
 		<canvas id="canv" width="1200" height="840" style="border:1px solid black;"></canvas>
@@ -278,7 +279,7 @@ function canvClick(event){
 		case Modes.wiring:
 			if((canv.wireStart[0]!=x||canv.wireStart[1]!=y)&&mod.wirable(x,y)){ 
 				var w=mod.route(x,y,canv.wireStart[0],canv.wireStart[1]);
-				if(w===undefined){alert("can't route");return;}					
+				if(w===undefined){alert("no route possible");return;}					
 				mod.wire(w);
 				canv.chMode(Modes.normal);
 			}
@@ -316,5 +317,4 @@ var canv=new View(document.getElementById('canv'),mult);
 document.getElementById('canv').onclick=canvClick;
 document.onkeydown=handleKeys;
 canv.grid();
-
 </script>
