@@ -18,6 +18,27 @@ class Types{
 	}
 }
 
+/*var factorial=(function(){
+    var f=[1,1];
+    return function(n){
+        if (f[n])
+            return f[n];
+        return f[n] = factorial(n-1) * n;
+    }
+})();*/
+
+function binomRand(n,p){
+    var count=0;
+    for(var i=0;i<n;i++){
+        if(Math.random()<=p)
+            count++;
+    }
+    return count;
+}
+function uniformRand(n){
+    return Math.floor(Math.random()*n);
+}
+
 class Node{ //search node
 	constructor(parent, state, f) {
 		this.parent = parent;

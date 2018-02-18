@@ -16,19 +16,60 @@ const mult=20;//grid pixel multiplier
 const compSz=4;//component size
 
 class Model{
-	constructor(width,height){
+	constructor(width,height,oldMod){
 		this.elements=[];//2d array of what is contained in each point
 		this.wires=[];//list of wires represented as list of points
 		this.components=[];//list of components, each component marked by top left point
 		this.width=width;
 		this.height=height;
 		
-		for(var i=0;i<=width;i++){
-			var newCol=[]
-			for(var j=0;j<=height;j++)
-				newCol.push(new GridItem());
-			this.elements.push(newCol);
+		if(oldMod){
+			for(var i=0;i<=width;i++){
+				var newCol=[]
+				for(var j=0;j<=height;j++)
+					newCol.push(new GridItem(oldMod.elements[i][j].type));
+				this.elements.push(newCol);
+			}
+
+			oldMod.wires.forEach(function(w){
+				this.wires.push(w.slice());
+			},this);
 		}
+		else{
+			for(var i=0;i<=width;i++){
+				var newCol=[]
+				for(var j=0;j<=height;j++)
+					newCol.push(new GridItem());
+				this.elements.push(newCol);
+			}
+		}
+	}
+
+	evaluate(){ //objective function for simulated annealing
+		//current: add up length of wire, 2*#intersections, and corners
+		//maybe add in bounding box and bus preference later
+		var length=0;
+		var intersections=0;
+		var corners=0;
+
+		for(var i=0;i<=this.width;i++){
+			for(var j=0;j<=this.height;j++){
+				if(!Types.isWire(this.elements[i][j].type))
+					continue;
+				length++;
+				switch(this.elements[i][j].type){
+					case Types.corner:
+						corners++;
+						break;
+					case Types.cross:
+						length++;
+						intersections++;
+						break;
+				}
+			}
+		}
+
+		return length+2*intersections+corners;
 	}
 
 	open(x,y,dir){
@@ -162,15 +203,13 @@ class Model{
 				res.push(cur.state);
 				cur=cur.parent;
 			}
+			res.reverse();
 			return res;
 		}
 	}
 }
 function GridItem(type){
 	this.type=type||null;
-}
-function Wire(){
-	this.points=[];
 }
 
 class View{
@@ -309,6 +348,77 @@ function handleKeys(e){
 				mod.removeWire(canv.selectedWire);
 				canv.chMode(Modes.normal);
 			}
+	}
+}
+
+function anneal(steps){
+	//known issues:
+	//wire sometimes doubles back on itself
+	//not that efficient, tends to give bad routings
+	//sometimes clips into component by connecting in the corner
+
+	var s=new Model(mod.width,mod.height,mod);
+	var energy=s.evaluate();
+	//var best=new Model(mod.width,mod.height,mod);
+	//var bestEnergy=val;
+
+	var temp=1;
+	for(var i=0;i<steps;i++){
+		temp=1-i/steps;
+		var next=neighbor();
+		if(next===undefined)
+			continue;
+		var eNew=next.evaluate();
+		if(p(energy,eNew)>=Math.random()){
+			s=next;
+			energy=eNew;
+		}
+	}
+
+	mod.elements=s.elements;
+	mod.wires=s.wires;
+
+	canv.redraw();
+	
+	function neighbor(){
+		var newMod=new Model(s.width,s.height,s);
+		var wireNumber=uniformRand(newMod.wires.length);
+		var wire=newMod.wires[wireNumber];
+		newMod.removeWire(wireNumber);
+		var startIndex=uniformRand(wire.length-3)+1; //subtract 3 because we don't want to pick connection points (first and last) or the very last, since length would be forced to be 0
+		var rerouteLength=uniformRand(wire.length-startIndex-2)+1;
+		var startX=wire[startIndex][0];
+		var startY=wire[startIndex][1];
+		var endX=wire[startIndex+rerouteLength][0];
+		var endY=wire[startIndex+rerouteLength][1];
+
+		var mid=wire[startIndex+Math.floor(rerouteLength/2)];		
+		var maxDistance=temp*50; //adjust the constant
+		var randX=mid[0]+binomRand(maxDistance,0.5)-25;
+		var randY=mid[1]+binomRand(maxDistance,0.5)-25;
+		if(randX<0||randX>mod.width||randY<0||randY>mod.width)
+			return;
+		
+		var firstHalf=newMod.route(startX,startY,randX,randY);
+		var secondHalf=newMod.route(randX,randY,endX,endY);
+
+		if(firstHalf===undefined||secondHalf===undefined)
+			return;
+
+		var newWire=wire.slice(0,startIndex);
+		newWire.push.apply(newWire,firstHalf);
+		for(var i=1;i<secondHalf.length;i++)
+			newWire.push(secondHalf[i]);
+		for(var i=startIndex+rerouteLength+1;i<wire.length;i++)
+			newWire.push(wire[i]);
+
+		newMod.wire(newWire);
+		return newMod;
+	}
+	function p(eOld,eNew){
+		if(eNew<eOld)
+			return 1;
+		return Math.exp(eOld-eNew)*5*temp //scaled to encourage wilder moves in the beginning
 	}
 }
 
