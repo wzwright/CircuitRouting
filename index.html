@@ -155,7 +155,7 @@ class Model{
 					cur.wireId=cur.w2;
 			}
 		}
-		this.wires.splice(canv.selectedWire,1); //remove
+		this.wires.splice(index,1); //remove
 	}
 	route(xStart,yStart,xGoal,yGoal){ //A* routing
 		var start=[xStart,yStart]
@@ -350,9 +350,9 @@ function handleKeys(e){
 
 function anneal(steps){
 	//known issues:
-	//wire start points jump onto each other
-	//wire sometimes doubles back on itself
-	//not that efficient, tends to give bad routings	
+	//wire sometimes doubles back on itself/other wire
+	//not that efficient, tends to give bad routings
+	//cross seems to be messed up
 
 	var s=new Model(mod.width,mod.height,mod);
 	var energy=s.evaluate();
@@ -379,8 +379,8 @@ function anneal(steps){
 	
 	function neighbor(){
 		var newMod=new Model(s.width,s.height,s);
-		var wireNumber=uniformRand(mod.wires.length);
-		var wire=mod.wires[wireNumber];
+		var wireNumber=uniformRand(newMod.wires.length);
+		var wire=newMod.wires[wireNumber];
 		newMod.removeWire(wireNumber);
 		var startIndex=uniformRand(wire.length-3)+1; //subtract 3 because we don't want to pick connection points (first and last) or the very last, since length would be forced to be 0
 		var rerouteLength=uniformRand(wire.length-startIndex-2)+1;
