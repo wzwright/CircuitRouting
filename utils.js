@@ -27,6 +27,10 @@ class Types{
     }
 })();*/
 
+function pointEq(a,b){
+    return a[0]==b[0]&&a[1]==b[1];
+}
+
 function binomRand(n,p){
     var count=0;
     for(var i=0;i<n;i++){
