@@ -18,10 +18,11 @@ const compSz=4;//component size
 class Model{
 	constructor(width,height,oldMod){
 		this.elements=[];//2d array of what is contained in each point
-		this.wires=[];//list of wires represented as list of points
+		this.wires={};//list of wires represented as list of points
 		this.components=[];//list of components, each component marked by top left point
 		this.width=width;
 		this.height=height;
+		this.nextId=0;
 		
 		if(oldMod){
 			for(var i=0;i<=width;i++){
@@ -31,9 +32,10 @@ class Model{
 				this.elements.push(newCol);
 			}
 
-			oldMod.wires.forEach(function(w){
-				this.wires.push(w.slice());
-			},this);
+			for(var wId in oldMod.wires)
+				this.wires[wId]=oldMod.wires[wId];
+
+			this.nextId=oldMod.nextId;
 		}
 		else{
 			for(var i=0;i<=width;i++){
@@ -115,7 +117,7 @@ class Model{
 	wire(w){
 		var fst=w[0];
 		var lst=w[w.length-1];
-		var id=this.wires.length;
+		var id=this.nextId++;
 		this.elements[fst[0]][fst[1]].type=Types.wiredEdge;
 		this.elements[fst[0]][fst[1]].wireId=id;
 		this.elements[lst[0]][lst[1]].type=Types.wiredEdge;
@@ -136,7 +138,8 @@ class Model{
 			else
 				this.elements[w[i][0]][w[i][1]].w2=id;
 		}
-		this.wires.push(w);
+		this.wires[id]=w;
+
 	}
 	removeWire(index){
 		var w=this.wires[index];
@@ -155,7 +158,7 @@ class Model{
 					cur.wireId=cur.w2;
 			}
 		}
-		this.wires.splice(index,1); //remove
+		delete this.wires[index];
 	}
 	route(xStart,yStart,xGoal,yGoal){ //A* routing
 		var start=[xStart,yStart]
@@ -230,9 +233,8 @@ class View{
 			var y=corner[1];
 			this.component(x,y);
 		},this);
-		mod.wires.forEach(function(w){
-			this.wire(w);
-		},this);
+		for(var wId in mod.wires)
+			this.wire(mod.wires[wId]);
 	}
 
 	line(x1,y1,x2,y2){		
@@ -379,8 +381,9 @@ function anneal(steps){
 	
 	function neighbor(){
 		var newMod=new Model(s.width,s.height,s);
-		var wireNumber=uniformRand(newMod.wires.length);
-		var wire=newMod.wires[wireNumber];
+		var wireNumbers=Object.keys(newMod.wires);
+		var wireNumber=wireNumbers[wireNumbers.length * Math.random() << 0]; //picks a random wire key
+		var wire=newMod.wires[wireNumber]; 
 		newMod.removeWire(wireNumber);
 		var startIndex=uniformRand(wire.length-3)+1; //subtract 3 because we don't want to pick connection points (first and last) or the very last, since length would be forced to be 0
 		var rerouteLength=uniformRand(wire.length-startIndex-2)+1;
