@@ -354,7 +354,7 @@ function anneal(steps){
 	//known issues:
 	//wire sometimes doubles back on itself/other wire
 	//not that efficient, tends to give bad routings
-	//cross seems to be messed up
+	//cross seems to be messed up? Elements lose ids after annealing
 
 	var s=new Model(mod.width,mod.height,mod);
 	var energy=s.evaluate();
@@ -397,7 +397,7 @@ function anneal(steps){
 		var randX=Math.round(mid[0]+binomRand(maxDistance,0.5)-maxDistance/2);
 		var randY=Math.round(mid[1]+binomRand(maxDistance,0.5)-maxDistance/2);
 
-		if(randX<0||randX>mod.width||randY<0||randY>mod.width)
+		if(randX<0||randX>mod.width||randY<0||randY>mod.height)
 			return;
 		var goalType=mod.elements[randX][randY].type
 		if(goalType!==null)//ignoring the possibility of the goal being at a crossing
