@@ -116,8 +116,9 @@ class Model{
 	}
 	wire(w){
 		var fst=w[0];
-		var lst=w[w.length-1];
-		var id=this.nextId++;
+		var lst=w[w.length-1];		
+		var id=this.nextId;
+		this.nextId=(this.nextId+1)%1000;
 		this.elements[fst[0]][fst[1]].type=Types.wiredEdge;
 		this.elements[fst[0]][fst[1]].wireId=id;
 		this.elements[lst[0]][lst[1]].type=Types.wiredEdge;
@@ -125,13 +126,30 @@ class Model{
 		for(var i=1;i<w.length-1;i++){
 			var xPrev=w[i-1][0], yPrev=w[i-1][1], xNext=w[i+1][0], yNext=w[i+1][1];			
 			var resType=null;
-			var prevEmpty=this.elements[w[i][0]][w[i][1]].type===null;
-			if(yPrev==yNext)
-				resType=prevEmpty?Types.horiz:Types.cross;
-			else if(xPrev==xNext)
-				resType=prevEmpty?Types.vert:Types.cross;
-			else
-				resType=Types.corner;
+			var prevType=this.elements[w[i][0]][w[i][1]].type;
+			if(yPrev==yNext){
+				if(prevType===null)
+					resType=Types.horiz;
+				else if(prevType===Types.vert)
+					resType=Types.cross;
+				else
+					return false;
+			}
+			else if(xPrev==xNext){
+				if(prevType===null)
+					resType=Types.vert;
+				else if(prevType===Types.horiz)
+					resType=Types.cross;
+				else
+					return false;
+			}
+			else{
+				if(prevType===null)
+					resType=Types.corner;
+				else
+					return false;
+			}
+				
 			this.elements[w[i][0]][w[i][1]].type=resType;
 			if(resType!==Types.cross)
 				this.elements[w[i][0]][w[i][1]].wireId=id;
@@ -139,7 +157,7 @@ class Model{
 				this.elements[w[i][0]][w[i][1]].w2=id;
 		}
 		this.wires[id]=w;
-
+		return true;
 	}
 	removeWire(index){
 		var w=this.wires[index];
@@ -351,16 +369,15 @@ function handleKeys(e){
 }
 
 function anneal(steps){
-	//known issues:
-	//wire sometimes doubles back on itself/other wire
+	//known issues:	
 	//not that efficient, tends to give bad routings
-	//cross seems to be messed up? Elements lose ids after annealing
+	//elements lose ids after annealing
 
 	var s=new Model(mod.width,mod.height,mod);
 	var energy=s.evaluate();
 	//var best=new Model(mod.width,mod.height,mod);
 	//var bestEnergy=val;
-
+	//var count=0;
 	var temp=1;
 	for(var i=0;i<steps;i++){
 		temp=1-i/steps;
@@ -371,9 +388,10 @@ function anneal(steps){
 		if(p(energy,eNew)>=Math.random()){
 			s=next;
 			energy=eNew;
+			//count++;
 		}
 	}
-
+	//console.log(count);
 	mod.elements=s.elements;
 	mod.wires=s.wires;
 
@@ -410,6 +428,8 @@ function anneal(steps){
 			return;
 
 		var newWire=wire.slice(0,startIndex); //include part before adjustment
+
+		//FIX LOOP REMOVAL, USE COUNTS OF POINTS ON WIRE IN SET
 		for(var k=0;k<firstHalf.length&&k<secondHalf.length;k++){ //removing loops
 			if(!pointEq(firstHalf[firstHalf.length-k-1],secondHalf[k])){				
 				break;
@@ -422,8 +442,9 @@ function anneal(steps){
 		for(var i=startIndex+rerouteLength+1;i<wire.length;i++) //include part after adjustment
 			newWire.push(wire[i]);
 
-		newMod.wire(newWire);
-		return newMod;
+
+		if(newMod.wire(newWire))
+			return newMod;
 	}
 	function p(eOld,eNew){
 		if(eNew<eOld)
