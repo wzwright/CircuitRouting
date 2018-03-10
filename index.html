@@ -27,8 +27,13 @@ class Model{
 		if(oldMod){
 			for(var i=0;i<=width;i++){
 				var newCol=[]
-				for(var j=0;j<=height;j++)
-					newCol.push(new GridItem(oldMod.elements[i][j].type));
+				for(var j=0;j<=height;j++){
+					var prevItem=oldMod.elements[i][j];
+					var nextItem=new GridItem(prevItem.type);
+					nextItem.wireId=prevItem.wireId;
+					nextItem.w2=prevItem.w2;
+					newCol.push(nextItem);
+				}
 				this.elements.push(newCol);
 			}
 
