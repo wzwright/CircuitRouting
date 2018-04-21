@@ -31,6 +31,9 @@ function pointEq(a,b){
     return a[0]==b[0]&&a[1]==b[1];
 }
 
+function plusMinusBinomRand(n,p){ //reflects distribution across 0
+    return binomRand(n,p)*(Math.round(Math.random())*2-1)
+}
 function binomRand(n,p){
     var count=0;
     for(var i=0;i<n;i++){
