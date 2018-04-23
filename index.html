@@ -385,6 +385,7 @@ function anneal(steps){
 
 	var s=new Model(mod.width,mod.height,mod);
 	var energy=s.evaluate();
+	var numWires=Object.keys(s.wires).length; //hack to fix issue with wires disappearing
 	//var best=new Model(mod.width,mod.height,mod);
 	//var bestEnergy=val;
 	var count=0;
@@ -392,7 +393,7 @@ function anneal(steps){
 	for(var i=0;i<steps;i++){
 		temp=1-i/steps;
 		var next=neighbor();
-		if(next===undefined)
+		if(next===undefined || Object.keys(next.wires).length!=numWires)
 			continue;
 		var eNew=next.evaluate();
 		if(p(energy,eNew)>=Math.random()){
@@ -409,7 +410,7 @@ function anneal(steps){
 	canv.redraw();
 
 	function neighbor(){
-		if(Math.random()<0){ //change this
+		if(Math.random()<1){ //change this
 			return joinPoint();
 		}
 		else{
@@ -445,8 +446,7 @@ function anneal(steps){
 		
 		var firstHalf=newMod.route(startX,startY,randX,randY);
 		var secondHalf=newMod.route(randX,randY,endX,endY);
-
-		if(firstHalf===undefined||secondHalf===undefined)
+		if(!firstHalf||!secondHalf)
 			return;
 
 		var newWire=wire.slice(0,startIndex); //include part before adjustment
@@ -497,6 +497,8 @@ function anneal(steps){
 		newMod.removeWire(wireNumber);
 		var firstHalf=newMod.route(start[0],start[1],newMid[0],newMid[1]);
 		var secondHalf=newMod.route(newMid[0],newMid[1],end[0],end[1]);
+		if(!firstHalf||!secondHalf)
+			return;
 
 		var newWire=wire.slice(0,corners[cornerIndex][1]);
 		for(var i=0;i<firstHalf.length;i++)
