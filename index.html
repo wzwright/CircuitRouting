@@ -14,7 +14,7 @@
 <script src="./tinyQ.js"></script>
 <script>
 const mult=20;//grid pixel multiplier
-const compSz=4;//component size
+const compSz=1;//component size
 
 class Model{
 	constructor(width,height,oldMod){
@@ -380,7 +380,6 @@ function handleKeys(e){
 
 function anneal(steps){
 	//known issues:	
-	//not that efficient, tends to give bad routings
 	//elements lose ids after annealing
 
 	var s=new Model(mod.width,mod.height,mod);
@@ -388,7 +387,7 @@ function anneal(steps){
 	var numWires=Object.keys(s.wires).length; //hack to fix issue with wires disappearing
 	//var best=new Model(mod.width,mod.height,mod);
 	//var bestEnergy=val;
-	var count=0;
+	//var count=0;
 	var temp=1;
 	for(var i=0;i<steps;i++){
 		temp=1-i/steps;
@@ -399,18 +398,19 @@ function anneal(steps){
 		if(p(energy,eNew)>=Math.random()){
 			s=next;
 			energy=eNew;
-			if(temp<0.1)
-				count++;
+			//if(temp<0.1)
+			//	count++;
 		}
 	}
-	console.log(count);
+	//console.log(count);
 	mod.elements=s.elements;
 	mod.wires=s.wires;
+	mod.nextId=s.nextId;
 
 	canv.redraw();
 
 	function neighbor(){
-		if(Math.random()<1){ //change this
+		if(Math.random()<0){ //change this
 			return joinPoint();
 		}
 		else{
@@ -501,12 +501,25 @@ function anneal(steps){
 			return;
 
 		var newWire=wire.slice(0,corners[cornerIndex][1]);
-		for(var i=0;i<firstHalf.length;i++)
+		//new wire depends on direction the wire goes after the third corner
+		var afterEnd=wire[corners[cornerIndex+2][1]+1]
+		if(Math.abs(end[0]-start[0])+Math.abs(end[1]-start[1])<Math.abs(afterEnd[0]-start[0])+Math.abs(afterEnd[1]-start[1])){ //wire continues away from start
+			for(var i=0;i<firstHalf.length;i++)
 			newWire.push(firstHalf[i]);
-		for(var i=1;i<secondHalf.length;i++)
-			newWire.push(secondHalf[i]);
-		for(var i=corners[cornerIndex+2][1]+1;i<wire.length;i++)
-			newWire.push(wire[i]);
+			for(var i=1;i<secondHalf.length;i++)
+				newWire.push(secondHalf[i]);
+			for(var i=corners[cornerIndex+2][1]+1;i<wire.length;i++)
+				newWire.push(wire[i]);
+		}
+		else{ //wire doubles back towards start
+			for(var i=0;i<firstHalf.length;i++)
+				newWire.push(firstHalf[i]);
+			var i=corners[cornerIndex+2][1]+1;
+			while(!pointEq(newMid,wire[i]))
+				i++;
+			for(i+=1;i<wire.length;i++)
+				newWire.push(wire[i]);
+		}
 
 		if(newMod.wire(newWire))
 			return newMod;
