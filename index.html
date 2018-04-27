@@ -14,7 +14,7 @@
 <script src="./tinyQ.js"></script>
 <script>
 const mult=20;//grid pixel multiplier
-const compSz=1;//component size
+const compSz=2;//component size
 
 class Model{
 	constructor(width,height,oldMod){
@@ -247,6 +247,7 @@ class View{
 		this.height=canvas.height;
 		this.mode=Modes.normal;
 		this.wireStart=null;
+		this.wireStack=[];
 	}
 
 	redraw(){
@@ -313,7 +314,9 @@ class View{
 				break;
 			case Modes.component:
 				document.getElementById("placeComp").className="btn btn-success";
-				break;			
+				break;
+			case Modes.normal:
+				canv.wireStack=[];
 		}
 
 	}
@@ -327,6 +330,7 @@ function canvClick(event){
 		case Modes.normal:
 			if(mod.wirable(x,y)){
 				canv.wireStart=[x,y]
+				canv.wireStack.push([x,y]);
 				canv.chMode(Modes.wiring,[x,y]);
 			}
 			else if(Types.isWire(mod.elements[x][y].type)||mod.elements[x][y].type===Types.wiredEdge){
@@ -339,11 +343,23 @@ function canvClick(event){
 			}
 			break;
 		case Modes.wiring:
-			if((canv.wireStart[0]!=x||canv.wireStart[1]!=y)&&mod.wirable(x,y)){ 
-				var w=mod.route(x,y,canv.wireStart[0],canv.wireStart[1]);
-				if(w===undefined){alert("no route possible");return;}					
+			if((canv.wireStart[0]!=x||canv.wireStart[1]!=y)&&mod.wirable(x,y)){
+				var prev=[x,y];
+				var w=[prev];
+				for(var i=canv.wireStack.length-1;i>=0;i--){
+					var cur=canv.wireStack[i];
+					var wNext=mod.route(prev[0],prev[1],cur[0],cur[1]);
+					if(wNext===undefined){alert("no route possible");return;}
+					for(var j=1;j<wNext.length;j++)
+						w.push(wNext[j]);
+					prev=cur;
+				}
+				
 				mod.wire(w);
 				canv.chMode(Modes.normal);
+			}
+			else{
+				canv.wireStack.push([x,y]);
 			}
 			break;
 		case Modes.component:
