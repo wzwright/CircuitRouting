@@ -46,6 +46,10 @@ function uniformRand(n){
     return Math.floor(Math.random()*n);
 }
 
+function cantorPair(x,y){ //Cantor pairing function
+    return (x+y)*(x+y+1)/2+y;
+}
+
 class Node{ //search node
 	constructor(parent, state, f) {
 		this.parent = parent;
