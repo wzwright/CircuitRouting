@@ -2,8 +2,24 @@
 
 <div class="container" style="margin:10px;">
 	<div class="row" style="margin-top: 10px; margin-bottom: 10px;">
-		<button id="placeComp" class="btn btn-default" onclick="compMode()">Place Component</button>
-		<span style="margin-left: 50px;">note: press d while a wire is selected to delete</span>
+		<div class="form-row">
+			<div class="col-3">
+				<button id="placeComp" class="btn btn-default" onclick="compMode()">Place Component</button> 
+			</div>
+			<div class="col-1">
+				<label class="col-form-label">width</label>
+			</div>
+			<div class="col-2">
+				<input type="number" id="compWidth" class="form-control" value="2"> 
+			</div>
+			<div class="col-1">
+				<label class="col-form-label">height</label>
+			</div>
+			<div class="col-2">
+				<input type="number" id="compHeight" class="form-control" value="2">
+			</div>
+		</div>
+		<span style="margin-left: 50px;">note: press d to delete selected element</span>
 	</div>
 	<div class="row">
 		<canvas id="canv" width="1200" height="840" style="border:1px solid black;"></canvas>
@@ -14,13 +30,13 @@
 <script src="./tinyQ.js"></script>
 <script>
 const mult=20;//grid pixel multiplier
-const compSz=2;//component size
+//const compSz=3;//component size
 
 class Model{
 	constructor(width,height,oldMod){
 		this.elements=[];//2d array of what is contained in each point
 		this.wires={};//set of wires represented as list of points
-		this.components=[];//list of components, each component marked by top left point
+		this.components=[];//list of components, each component marked by top left point and dimensions
 		this.width=width;
 		this.height=height;
 		this.nextId=0;
@@ -97,22 +113,27 @@ class Model{
 	wirable(x,y){
 		return this.elements[x][y].type===Types.edge;
 	}	
-	component(x,y){
+	component(comp){
+		var x=comp.pos[0];
+		var y=comp.pos[1];
+		var width=comp.width;
+		var height=comp.height;		
+
 		//check if component isn't overlapping with anything
-		if(x+compSz>this.width||y+compSz>this.height)
+		if(x+width>this.width||y+height>this.height)
 			return false;
-		for(var i=0;i<=compSz;i++){
-			for(var j=0;j<=compSz;j++){
+		for(var i=0;i<=width;i++){
+			for(var j=0;j<=height;j++){
 				if(this.elements[x+i][y+j].type!==null)
 					return false;
 			}
 		}
 
 		//place component
-		this.components.push([x,y])
-		for(var i=0;i<=compSz;i++){
-			for(var j=0;j<=compSz;j++){
-				if(i==0||j==0||i==compSz||j==compSz)
+		this.components.push(comp);
+		for(var i=0;i<=width;i++){
+			for(var j=0;j<=height;j++){
+				if(i==0||j==0||i==width||j==height)
 					this.elements[x+i][y+j]=new GridItem("edge");
 				else
 					this.elements[x+i][y+j]=new GridItem("body");
@@ -253,11 +274,8 @@ class View{
 	redraw(){
 		this.ctx.clearRect(0,0,this.width,this.height);
 		this.grid();
-		mod.components.forEach(function(corner){
-			var x=corner[0];
-			var y=corner[1];
-			this.component(x,y);
-		},this);
+		for(var compId in mod.components)
+			this.component(mod.components[compId]);
 		for(var wId in mod.wires)
 			this.wire(mod.wires[wId]);
 	}
@@ -279,12 +297,14 @@ class View{
 	}
 	point(x,y){
 		this.ctx.beginPath();
-		this.ctx.arc(x*this.gm,y*this.gm,this.gm/4,0,2*Math.PI);
+		this.ctx.arc(x*this.gm,y*this.gm,this.gm/5,0,2*Math.PI);
 		this.ctx.fill();
 	}
-	component(x,y){
+	component(comp){
+		var x=comp.pos[0];
+		var y=comp.pos[1];
 		this.ctx.strokeStyle="#555";
-		this.wire([[x,y],[x+compSz,y],[x+compSz,y+compSz],[x,y+compSz],[x,y]]);
+		this.wire([[x,y],[x+comp.width,y],[x+comp.width,y+comp.height],[x,y+comp.height],[x,y]]);
 		this.ctx.strokeStyle="#000";
 	}
 	grid(){
@@ -363,7 +383,10 @@ function canvClick(event){
 			}
 			break;
 		case Modes.component:
-			if(mod.component(x,y)){				
+			var comp={pos:[x,y]};
+			comp.width=parseInt(document.getElementById('compWidth').value);
+			comp.height=parseInt(document.getElementById('compHeight').value);
+			if(mod.component(comp)){				
 				canv.chMode(Modes.normal);
 			}
 			break;
