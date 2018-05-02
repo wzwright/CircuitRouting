@@ -3,23 +3,30 @@
 <div class="container" style="margin:10px;">
 	<div class="row" style="margin-top: 10px; margin-bottom: 10px;">
 		<div class="form-row">
-			<div class="col-3">
+			<div class="col-2">
 				<button id="placeComp" class="btn btn-default" onclick="compMode()">Place Component</button> 
 			</div>
 			<div class="col-1">
 				<label class="col-form-label">width</label>
 			</div>
-			<div class="col-2">
+			<div class="col-1">
 				<input type="number" id="compWidth" class="form-control" value="2"> 
 			</div>
 			<div class="col-1">
 				<label class="col-form-label">height</label>
 			</div>
-			<div class="col-2">
+			<div class="col-1">
 				<input type="number" id="compHeight" class="form-control" value="2">
 			</div>
+			<div class="col-1"></div>
+			<div class="col-1">
+				<button id="anneal" class="btn btn-default" onclick="annealClick()">Anneal</button> 			
+			</div>
+			<div class="col-2">
+				<input type="number" id="annealSteps" class="form-control" placeholder="steps">
+			</div>
 		</div>
-		<span style="margin-left: 50px;">note: press d to delete selected element</span>
+		<!--span style="margin-left: 50px;">note: press d to delete selected element</span-->
 	</div>
 	<div class="row">
 		<canvas id="canv" width="1200" height="840" style="border:1px solid black;"></canvas>
@@ -286,7 +293,7 @@ class View{
 		this.ctx.lineTo(x2*this.gm,y2*this.gm);
 		this.ctx.stroke();
 	}
-	wire(w){ //list of points on wire
+	wire(w){
 		this.ctx.beginPath();
 		var start=w[0];
 		this.ctx.moveTo(start[0]*this.gm,start[1]*this.gm)
@@ -294,7 +301,7 @@ class View{
 			this.ctx.lineTo(w[i][0]*this.gm,w[i][1]*this.gm);
 		}
 		this.ctx.stroke();
-	}
+	}	
 	point(x,y){
 		this.ctx.beginPath();
 		this.ctx.arc(x*this.gm,y*this.gm,this.gm/5,0,2*Math.PI);
@@ -304,7 +311,10 @@ class View{
 		var x=comp.pos[0];
 		var y=comp.pos[1];
 		this.ctx.strokeStyle="#555";
-		this.wire([[x,y],[x+comp.width,y],[x+comp.width,y+comp.height],[x,y+comp.height],[x,y]]);
+		if(comp.width>0)
+			this.wire([[x,y],[x+comp.width,y],[x+comp.width,y+comp.height],[x,y+comp.height],[x,y]]);
+		else
+			this.point(x,y);
 		this.ctx.strokeStyle="#000";
 	}
 	grid(){
@@ -326,6 +336,7 @@ class View{
 			case Modes.wiring:
 				canv.ctx.fillStyle="#A00";
 				canv.point(opt[0],opt[1]);
+				canv.ctx.fillStyle="#000";
 				break;
 			case Modes.wire:
 				canv.ctx.strokeStyle="#0C0";
@@ -417,6 +428,14 @@ function handleKeys(e){
 	}
 }
 
+function annealClick(){
+	var stepsInput=document.getElementById("annealSteps");
+	if(!stepsInput.value)
+		stepsInput.value=1000;
+	var steps=parseInt(stepsInput.value);
+	anneal(steps);
+}
+
 function anneal(steps){
 	//known issues:	
 	//elements lose ids after annealing
@@ -453,7 +472,7 @@ function anneal(steps){
 	canv.redraw();
 
 	function neighbor(){
-		if(Math.random()<0){ //change this
+		if(Math.random()<0.9){ //change this
 			return joinPoint();
 		}
 		else{
