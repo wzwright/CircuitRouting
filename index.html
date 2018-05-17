@@ -56,6 +56,7 @@ class Model{
 					var nextItem=new GridItem(prevItem.type);
 					nextItem.wireId=prevItem.wireId;
 					nextItem.w2=prevItem.w2;
+					nextItem.compId=prevItem.compId;
 					newCol.push(nextItem);
 				}
 				this.elements.push(newCol);
@@ -64,7 +65,11 @@ class Model{
 			for(var wId in oldMod.wires)
 				this.wires[wId]=oldMod.wires[wId];
 
+			this.components=oldMod.components;
+
 			this.nextId=oldMod.nextId;
+			this.initialBus=oldMod.initialBus;
+			this.initialSpace=oldMod.initialSpace;
 		}
 		else{
 			for(var i=0;i<=width;i++){
@@ -76,9 +81,7 @@ class Model{
 		}
 	}
 
-	evaluate(){ //objective function for simulated annealing
-		//current: add up length of wire, 2*#intersections, and corners
-		//maybe add in bounding box and bus preference later
+	evaluate(flag){ //objective function for simulated annealing		
 		var length=0;
 		var intersections=0;
 		var corners=0;
@@ -100,7 +103,65 @@ class Model{
 			}
 		}
 
-		return length+2*intersections+corners;
+		var wireIds=Object.keys(this.wires);
+		var wireMeans={};
+		for(var i=0;i<wireIds.length;i++){
+			wireMeans[wireIds[i]]=wireMean(this.wires[wireIds[i]]);
+		}
+		var busDists=[];
+		var spaceDists=[];
+		for(var i=0;i<wireIds.length;i++){
+			for(var j=i+1;j<wireIds.length;j++){
+				var w1=this.wires[wireIds[i]];
+				var w2=this.wires[wireIds[j]];
+				if(sameComponents(w1,w2))
+					busDists.push(pointDist(wireMean(w1),wireMean(w2)));
+				else
+					spaceDists.push(pointDist(wireMean(w1),wireMean(w2)));
+			}
+		}
+		var busDistance=powerMean(busDists,2)||1; //Set to 1 if there aren't enough wires
+		var spaceValue=powerMean(spaceDists,0.5)||1;
+		if(flag==="start"||this.initialBus==undefined){
+			this.initialBus=busDistance;
+			this.initialSpace=spaceValue;
+		}
+		var busScore=busDistance/this.initialBus;
+		var spaceScore=spaceValue/this.initialSpace;
+
+		if(flag==="debug"){//bounding box
+			var minX=this.width;
+			var maxX=0;
+			var minY=this.width;
+			var maxY=0;
+			for(var i=0;i<=this.width;i++){
+				for(var j=0;j<=this.height;j++){
+					if(this.elements[i][j].type!=null){
+						if(i<minX)
+							minX=i;
+						else if (i>maxX)
+							maxX=i;
+						if(j<minY)
+							minY=j;
+						else if (j>maxY)
+							maxY=j;
+					}
+				}
+			}
+			var bounding=(maxX-minX)*(maxY-minY);
+		}
+
+		if(flag==="debug"){
+			console.log("length",length);
+			console.log("intersections",intersections);
+			console.log("corners",corners);
+			console.log("bounding",bounding);
+			console.log("busDistance",busDistance);
+			console.log("spaceValue",spaceValue);
+			console.log("busScore",busScore);
+			console.log("spaceScore",spaceScore);
+		}
+		return length+2*intersections+2*corners+(busScore-spaceScore);
 	}
 
 	open(x,y,dir){
@@ -137,13 +198,15 @@ class Model{
 		}
 
 		//place component
-		this.components.push(comp);
+		var compId=this.components.length;
+		this.components.push(comp);		
 		for(var i=0;i<=width;i++){
 			for(var j=0;j<=height;j++){
 				if(i==0||j==0||i==width||j==height)
 					this.elements[x+i][y+j]=new GridItem("edge");
 				else
 					this.elements[x+i][y+j]=new GridItem("body");
+				this.elements[x+i][y+j].compId=compId;
 			}
 		}
 		return true;
@@ -220,10 +283,10 @@ class Model{
 		}
 		function openNeighbors(x,y,goal){
 			var res=[];
-			if(mod.open(x+1,y,'h')||pointEq([x+1,y],goal)){res.push([x+1,y]);}
-			if(mod.open(x-1,y,'h')||pointEq([x-1,y],goal)){res.push([x-1,y]);}
-			if(mod.open(x,y+1,'v')||pointEq([x,y+1],goal)){res.push([x,y+1]);}
-			if(mod.open(x,y-1,'v')||pointEq([x,y-1],goal)){res.push([x,y-1]);}			
+			if(this.open(x+1,y,'h')||pointEq([x+1,y],goal)){res.push([x+1,y]);}
+			if(this.open(x-1,y,'h')||pointEq([x-1,y],goal)){res.push([x-1,y]);}
+			if(this.open(x,y+1,'v')||pointEq([x,y+1],goal)){res.push([x,y+1]);}
+			if(this.open(x,y-1,'v')||pointEq([x,y-1],goal)){res.push([x,y-1]);}			
 			return res;
 		}
 
@@ -236,7 +299,7 @@ class Model{
 			if(pointEq(cur.state,goal))
 				return getPath(cur);
 
-			openNeighbors(cur.state[0],cur.state[1],goal).forEach(function(neighbor){
+			openNeighbors.call(this,cur.state[0],cur.state[1],goal).forEach(function(neighbor){
 				var nX=neighbor[0];
 				var nY=neighbor[1];
 				if((nX in predecessors)&&(nY in predecessors[nX]))
@@ -437,11 +500,8 @@ function annealClick(){
 }
 
 function anneal(steps){
-	//known issues:	
-	//elements lose ids after annealing
-
 	var s=new Model(mod.width,mod.height,mod);
-	var energy=s.evaluate();
+	var energy=s.evaluate("start");
 	var numWires=Object.keys(s.wires).length; //hack to fix issue with wires disappearing
 	//var best=new Model(mod.width,mod.height,mod);
 	//var bestEnergy=val;
@@ -449,7 +509,15 @@ function anneal(steps){
 	var count2=0;
 	var temp=1;
 	var tempInc=1/steps;
+	var energyRecord=[];
+	var tempEnergySum=0;
 	for(var i=0;i<steps;i++){
+		tempEnergySum+=energy;
+		if(i%1000==999){
+			energyRecord.push(tempEnergySum/1000);
+			tempEnergySum=0;
+		}
+
 		temp-=tempInc;
 		var next=neighbor();
 		if(next===undefined || Object.keys(next.wires).length!=numWires)
@@ -457,22 +525,24 @@ function anneal(steps){
 		var eNew=next.evaluate();
 		if(p(energy,eNew)>=Math.random()){
 			s=next;
-			energy=eNew;
-			if(p(energy,eNew)<1)
+			if(energy<eNew)
 				count++;
+			energy=eNew;
 			count2++;
 		}
 	}
-	console.log(count);
-	console.log(count2);
+	console.log("suboptimal", count);
+	console.log("total", count2);
 	mod.elements=s.elements;
 	mod.wires=s.wires;
 	mod.nextId=s.nextId;
 
 	canv.redraw();
 
+	return energyRecord;
+
 	function neighbor(){
-		if(Math.random()<0.9){ //change this
+		if(Math.random()<Math.sqrt(temp)||temp<0.05){ //change this
 			return joinPoint();
 		}
 		else{
@@ -495,7 +565,7 @@ function anneal(steps){
 		var endY=wire[startIndex+rerouteLength][1];
 
 		var mid=wire[startIndex+Math.floor(rerouteLength/2)];		
-		var maxDistance=temp*25; //adjust the constant
+		var maxDistance=temp*15; //adjust the constant
 		// old formula: Math.round(mid[0]+binomRand(maxDistance,0.5)-maxDistance/2);
 		var randX=mid[0]+plusMinusBinomRand(maxDistance,0.5);
 		var randY=mid[1]+plusMinusBinomRand(maxDistance,0.5);
@@ -525,7 +595,6 @@ function anneal(steps){
 			newWire.push(secondHalf[i]);
 		for(var i=startIndex+rerouteLength+1;i<wire.length;i++) //include part after adjustment
 			newWire.push(wire[i]);
-
 
 		if(newMod.wire(newWire))
 			return newMod;
@@ -560,11 +629,11 @@ function anneal(steps){
 		var firstHalf=newMod.route(start[0],start[1],newMid[0],newMid[1]);
 		var secondHalf=newMod.route(newMid[0],newMid[1],end[0],end[1]);
 		if(!firstHalf||!secondHalf)
-			return;		
+			return;
+		if(firstHalf.length!=Math.abs(start[0]+start[1]-newMid[0]-newMid[1])+1||secondHalf.length!=Math.abs(newMid[0]+newMid[1]-end[0]-end[1])) //discard straightens that run over components or aren't straight
+			return;
 
-		var newWire=wire.slice(0,corners[cornerIndex][1]);
-		//new wire depends on direction the wire goes after the third corner
-		var afterEnd=wire[corners[cornerIndex+2][1]+1]
+		var newWire=wire.slice(0,corners[cornerIndex][1]);		
 		for(var i=0;i<firstHalf.length;i++)
 			newWire.push(firstHalf[i]);
 		for(var i=1;i<secondHalf.length;i++)
@@ -572,25 +641,11 @@ function anneal(steps){
 		for(var i=corners[cornerIndex+2][1]+1;i<wire.length;i++)
 			newWire.push(wire[i]);
 
-		newWire=removeLoop(newWire);
-		/*
-		if(Math.abs(end[0]-start[0])+Math.abs(end[1]-start[1])<Math.abs(afterEnd[0]-start[0])+Math.abs(afterEnd[1]-start[1])){ //wire continues away from start
-			for(var i=0;i<firstHalf.length;i++)
-			newWire.push(firstHalf[i]);
-			for(var i=1;i<secondHalf.length;i++)
-				newWire.push(secondHalf[i]);
-			for(var i=corners[cornerIndex+2][1]+1;i<wire.length;i++)
-				newWire.push(wire[i]);
+		for(var i=1;i<newWire.length-1;i++){ //discard straightens that run over components
+			if(Types.isComponent(newMod.elements[newWire[i][0]][newWire[i][1]]).type)
+				return;
 		}
-		else{ //wire doubles back towards start
-			for(var i=0;i<firstHalf.length;i++)
-				newWire.push(firstHalf[i]);
-			var i=corners[cornerIndex+2][1]+1;
-			while(i<wire.length&&!pointEq(newMid,wire[i]))
-				i++;
-			for(i+=1;i<wire.length;i++)
-				newWire.push(wire[i]);
-		}*/
+		newWire=removeLoop(newWire);
 
 		if(newMod.wire(newWire))
 			return newMod;
@@ -613,7 +668,7 @@ function anneal(steps){
 			if(i==w.length)
 				return newWire;
 			newWire.push(w[i]);
-			while(doubles.has(cantorPair(w[i][0],w[i][1]))||(i<w.length-1&&doubles.has(cantorPair(w[i+1][0],w[i+1][1]))))//when the overlap gets to the end and turns around, there is one not-doubled point
+			while((i<w.length&&doubles.has(cantorPair(w[i][0],w[i][1])))||(i<w.length-1&&doubles.has(cantorPair(w[i+1][0],w[i+1][1]))))//when the overlap gets to the end and turns around, there is one not-doubled point
 				i++;
 			while(i<w.length){
 				newWire.push(w[i]);
@@ -626,11 +681,37 @@ function anneal(steps){
 	function p(eOld,eNew){
 		if(eNew<eOld)
 			return 1;
-		return Math.exp(eOld-eNew)*5*temp //scaled to encourage wilder moves in the beginning
+		return Math.exp((eOld-eNew)/temp/5) //scaled to encourage wilder moves in the beginning
 	}	
 }
 
-var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
+function load(loadMod){//load a model into the editor
+	mod.components=loadMod.components;
+	mod.wires=loadMod.wires;
+	mod.elements=loadMod.elements;
+	canv.redraw();
+}
+
+function energyCurve(steps, trials){
+	steps=steps||25000;
+	trials=trials||25;
+	var startTime=performance.now();
+	var startMod=JSON.stringify(mod);
+	var sumEnergies=[];
+	for(var i=0;i<trials;i++){
+		load(JSON.parse(startMod));
+		var energyRecord=anneal(steps);
+		for(var j=0;j<energyRecord.length;j++)
+			sumEnergies[j]=(sumEnergies[j]||0)+energyRecord[j];	
+		console.log(i);	
+	}
+	console.log((performance.now()-startTime)/1000);
+	return(JSON.stringify(sumEnergies.map(x=>x/trials))); //easier to copy
+	//return sumEnergies.map(x=>x/trials);
+}
+
+var mod=new Model(1200/mult, 840/mult);
+//var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
 var canv=new View(document.getElementById('canv'),mult);
 document.getElementById('canv').onclick=canvClick;
 document.onkeydown=handleKeys;
