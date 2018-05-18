@@ -275,6 +275,22 @@ class Model{
 		}
 		delete this.wires[index];
 	}
+	removeComponent(index){
+		var c=this.components[index];
+		var x=c.pos[0];
+		var y=c.pos[1];
+		for(var i=0;i<=c.width;i++){
+			for(var j=0;j<=c.height;j++){
+				var curElem=this.elements[x+i][y+j];
+				if(i==0||j==0||i==c.width||j==c.height){
+					if(curElem.type===Types.wiredEdge)
+						this.removeWire(curElem.wireId);
+				}
+				curElem.type=null;
+			}
+		}
+		delete this.components[index];
+	}
 	route(xStart,yStart,xGoal,yGoal){ //A* routing
 		var start=[xStart,yStart]
 		var goal=[xGoal,yGoal]
@@ -370,10 +386,11 @@ class View{
 		this.ctx.arc(x*this.gm,y*this.gm,this.gm/5,0,2*Math.PI);
 		this.ctx.fill();
 	}
-	component(comp){
+	component(comp,selectFlag){
 		var x=comp.pos[0];
 		var y=comp.pos[1];
-		this.ctx.strokeStyle="#555";
+		if(!selectFlag) //normal stroke color
+			this.ctx.strokeStyle="#555";
 		if(comp.width>0)
 			this.wire([[x,y],[x+comp.width,y],[x+comp.width,y+comp.height],[x,y+comp.height],[x,y]]);
 		else
@@ -406,6 +423,11 @@ class View{
 				canv.wire(mod.wires[opt]);
 				canv.selectedWire=opt;
 				break;
+			case Modes.selectComponent:
+				canv.ctx.strokeStyle="#4AE";
+				canv.component(mod.components[opt],true);
+				canv.selectedComponent=opt;
+				break;
 			case Modes.component:
 				document.getElementById("placeComp").className="btn btn-success";
 				break;
@@ -421,6 +443,10 @@ function canvClick(event){
 	var y=Math.round((event.pageY-canv.top)/mult);
 	switch(canv.mode){
 		case Modes.wire:
+			if(Types.isComponent(mod.elements[x][y].type)){
+				canv.chMode(Modes.selectComponent,mod.elements[x][y].compId);
+				break;
+			}
 		case Modes.normal:
 			if(mod.wirable(x,y)){
 				canv.wireStart=[x,y]
@@ -434,6 +460,9 @@ function canvClick(event){
 				else
 					selected=mod.elements[x][y].wireId;
 				canv.chMode(Modes.wire,selected);
+			}
+			else if(Types.isComponent(mod.elements[x][y].type)){
+				canv.chMode(Modes.selectComponent,mod.elements[x][y].compId);
 			}
 			break;
 		case Modes.wiring:
@@ -485,6 +514,10 @@ function handleKeys(e){
 		case 68: //d
 			if(canv.mode===Modes.wire){
 				mod.removeWire(canv.selectedWire);
+				canv.chMode(Modes.normal);
+			}
+			else if(canv.mode===Modes.selectComponent){
+				mod.removeComponent(canv.selectedComponent);
 				canv.chMode(Modes.normal);
 			}
 			break;

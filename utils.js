@@ -3,6 +3,7 @@ class Modes{
 	static get wiring(){return "wiring";}
 	static get wire(){return "wire";}
 	static get component(){return "component";}
+	static get selectComponent(){return "selectComponent";}
 }
 class Types{
 	static get body(){return "body";}
