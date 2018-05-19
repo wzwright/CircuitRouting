@@ -481,6 +481,9 @@ function canvClick(event){
 				mod.wire(w);
 				canv.chMode(Modes.normal);
 			}
+			else if(Types.isComponent(mod.elements[x][y].type)){
+				canv.chMode(Modes.selectComponent,mod.elements[x][y].compId);				
+			}
 			else{
 				canv.wireStack.push([x,y]);
 			}
