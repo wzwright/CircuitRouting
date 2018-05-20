@@ -37,7 +37,6 @@
 <script src="./tinyQ.js"></script>
 <script>
 const mult=20;//grid pixel multiplier
-//const compSz=3;//component size
 
 class Model{
 	constructor(width,height,oldMod){
@@ -514,6 +513,7 @@ function handleKeys(e){
 		case 67:
 			compMode();
 			break;
+		case 46: //del
 		case 68: //d
 			if(canv.mode===Modes.wire){
 				mod.removeWire(canv.selectedWire);
@@ -619,7 +619,6 @@ function anneal(steps){
 
 		var newWire=wire.slice(0,startIndex); //include part before adjustment
 
-		//FIX LOOP REMOVAL, USE COUNTS OF POINTS ON WIRE IN SET
 		for(var k=0;k<firstHalf.length&&k<secondHalf.length;k++){ //removing loops
 			if(!pointEq(firstHalf[firstHalf.length-k-1],secondHalf[k])){				
 				break;
@@ -746,8 +745,7 @@ function energyCurve(steps, trials){
 	//return sumEnergies.map(x=>x/trials);
 }
 
-var mod=new Model(1200/mult, 840/mult);
-//var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
+var mod=new Model(1200/mult, 840/mult); //make sure this is an integer
 var canv=new View(document.getElementById('canv'),mult);
 document.getElementById('canv').onclick=canvClick;
 document.onkeydown=handleKeys;
